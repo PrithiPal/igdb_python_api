@@ -5,42 +5,6 @@ import sys
 
 
 class IGBRequest : 
-    
-
-    def getAllGames(self) : 
-        url = os.path.join(self.BASE_URL,"games")
-        resp = requests.get(url,headers=self.BASE_PARAM,params={"fields":'*'})
-        return resp.json()
-
-    def getGameById(self,id) : 
-        url = os.path.join(self.BASE_URL,"games")
-        resp = requests.get(url,headers=self.BASE_PARAM,params={'id':id,'fields':['*']})
-        return resp.json()       
-
-    def getGameByName(self,name,**kwargs) : 
-        url = os.path.join(self.BASE_URL,"games")
-        
-        PARAMS={'search':name}
-        if 'fields' in kwargs : 
-            FIELDS=",".join(kwargs['fields'])
-            PARAMS = {**PARAMS,**{'fields':FIELDS}}
-        
-        print(PARAMS)
-        resp = requests.get(url,headers=self.BASE_PARAM,params=PARAMS)
-        return resp.json()
-
-
-
-    def getGenres(self,**kwargs) : 
-        url = os.path.join(self.BASE_URL,"genres")
-
-        PARAMS={}
-        if 'fields' in kwargs : 
-            PARAMS['fields'] = kwargs['fields']
-
-        print(PARAMS)
-        resp = requests.get(url,headers=self.BASE_PARAM,params=PARAMS)
-        return resp.json()
 
     def __init__(self) : 
         self.BASE_URL="https://api-v3.igdb.com/"
@@ -102,7 +66,6 @@ class IGBRequest :
 
         ]
 
-
         self.GAME_CATEGORY_MAP={
             0 : 'main_game',
             1 : 'dlc_addon',
@@ -124,7 +87,7 @@ class IGBRequest :
         }
 
 
-        self.GENRES_FIELDS=[
+        self.GENRES_FIELDS_ALL=[
             'created_at',
             'name',
             'slug',
@@ -132,18 +95,77 @@ class IGBRequest :
             'url'
         ]
 
+        self.DEFAULT_GAME_FIELDS=[
+            "name",
+            "summary",
+            "rating",
+            "cover.url",   
+            "platforms",
+            "screenshots"
+        ]
+
     def __str__(self) : 
         return "IGDB API FETCHER"
+
+    def getGameById(self,id,**kwargs) : 
+        url = os.path.join(self.BASE_URL,"games")
+        
+        PARAMS={}
+        PARAMS['fields']=','.join(self.DEFAULT_GAME_FIELDS)
+        PARAMS['id']=id
+
+        if 'fields' in kwargs : 
+            FIELDS=",".join(kwargs['fields'])
+            PARAMS = {**PARAMS,**{'fields':FIELDS}}
+        
+        print(PARAMS)
+        resp = requests.get(url,headers=self.BASE_PARAM,params=PARAMS)
+        return resp.json()
+
+
+    def getGameByName(self,name,**kwargs) : 
+        url = os.path.join(self.BASE_URL,"games")
+        
+        PARAMS={}
+        PARAMS['fields']=','.join(self.DEFAULT_GAME_FIELDS)
+        PARAMS['search']=name
+
+        if 'fields' in kwargs : 
+            FIELDS=",".join(kwargs['fields'])
+            PARAMS = {**PARAMS,**{'fields':FIELDS}}
+        
+        print(PARAMS)
+        resp = requests.get(url,headers=self.BASE_PARAM,params=PARAMS)
+        return resp.json()
+
+    
+    def getGenres(self,**kwargs) : 
+        url = os.path.join(self.BASE_URL,"genres")
+
+        PARAMS={}
+        
+        if 'fields' in kwargs : 
+            PARAMS['fields'] = ",".join(kwargs['fields'])
+
+        print(PARAMS)
+        resp = requests.get(url,headers=self.BASE_PARAM,params=PARAMS)
+        return resp.json()
+
 
 if __name__=='__main__' : 
     
     handler = IGBRequest() 
     
     #handler.getAllGames()
-    #handler.getGameByName("fifa",fields=["name","age_ratings"])
 
-    resp = handler.getGameByName("fifa",fields=["name"])
-    resp = handler.getGameByName("tom clancy",fields=["name","category","summary"])
-
+    #resp = handler.getGameByName("tom clancy",fields=["name","category","cover"])
+    #resp = handler.getGenres(fields=["name","url"])
     #resp = handler.getAllGames()
+    
+
+    resp = handler.getGameByName("tom clancy",fields=["id","name"])
+    game_ids = [x['id'] for x in resp ]
+    
+    resp = handler.getGameById(game_ids[0])
     print(resp)
+    
