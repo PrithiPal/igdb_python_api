@@ -1,7 +1,7 @@
 import requests 
 import os 
 import sys 
-
+import field_info
 
 
 class IGBRequest : 
@@ -13,100 +13,15 @@ class IGBRequest :
                            'Accept' : 'application/json'
                           }
 
-        self.GAME_FIELDS_ALL=[
-            'age_ratings',
-            'aggregated_rating',
-            'aggregarted_rating_count',
-            'alternative_names',
-            'artworks',
-            'bundles',
-            'category',
-            'collection',
-            'cover',
-            'created_at',
-            'dlcs',
-            'expansions',
-            'external_games',
-            'first_release_data',
-            'follows',
-            'franchise',
-            'franchises',
-            'game_engines',
-            'game_modes',
-            'genres',
-            'hypes',
-            'involved_companies',
-            'keywords',
-            'multiplayer_modes',
-            'name',
-            'parent_game',
-            'platforms',
-            'player_perspectives', 
-            'popularity',
-            'pulse_count',
-            'rating',
-            'rating_count',
-            'release_dates',
-            'screenshots',
-            'similar_games',
-            'status',
-            'storyline',
-            'summary',
-            'tags',
-            'themes',
-            'time_to_beat',
-            'total_rating',
-            'total_rating_count',
-            'updated_at',
-            'url',
-            'version_parent',
-            'version_title',
-            'videos',
-            'websites'
-
-        ]
-
-        self.GAME_CATEGORY_MAP={
-            0 : 'main_game',
-            1 : 'dlc_addon',
-            2 : 'expansion', 
-            3 : 'bundle' , 
-            4 : 'standalone_expansion' , 
-            5 : 'mod' , 
-            6 : 'episode'
-        }
-
-        self.GAME_STATUS_MAP={
-            0 : 'released' , 
-            2 : 'alpha' , 
-            3 : 'beta' , 
-            4 : 'early_access',  
-            5 : 'offline' , 
-            6 : 'cancelled' , 
-            7 : 'rumored'
-        }
-
-
-        self.GENRES_FIELDS_ALL=[
-            'created_at',
-            'name',
-            'slug',
-            'updated_at',
-            'url'
-        ]
-
-        self.DEFAULT_GAME_FIELDS=[
-            "name",
-            "summary",
-            "rating",
-            "cover.url",   
-            "platforms",
-            "screenshots"
-        ]
+        self.GAME_FIELDS_ALL=field_info.GAME_FIELDS_ALL
+        self.GAME_CATEGORY_MAP=field_info.GAME_CATEGORY_MAP
+        self.GAME_STATUS_MAP=field_info.GAME_STATUS_MAP
+        self.GENRES_FIELDS_ALL=field_info.GAME_FIELDS_ALL
+        self.DEFAULT_GAME_FIELDS=field_info.DEFAULT_GAME_FIELDS
+        self.GENRE_MAP =  self.__setGenresMap()
 
         self.all_genres_count = 0 
         self.all_games_count = 0 
-
 
     def __str__(self) : 
         return "IGDB API FETCHER"
@@ -129,7 +44,19 @@ class IGBRequest :
             for x in sub_link : 
                 url = os.path.join(url,x)
         
+        print(param_args)
         resp = requests.get(url,headers=self.BASE_PARAM,params=param_args)
+        return resp.json()
+
+    def __getGenreRequest(self,params_args,sub_link=None) :
+
+        url = os.path.join(self.BASE_URL,"genres")
+        
+        if sub_link is not None : 
+            for x in sub_link : 
+                url = os.path.join(url,x)
+        
+        resp = requests.post(url,headers=self.BASE_PARAM,data=params_args)
         return resp.json()
 
 
@@ -151,9 +78,23 @@ class IGBRequest :
         if 'limit' in kwargs : 
             PARAMS+="limit {} ;".format(kwargs['limit'])
 
+        if 'search' in kwargs :
+            PARAMS+="search \"{}\" ;".format(kwargs['search'])
+
+        
         return PARAMS
 
+    def __setGenresMap(self) : 
 
+        PARAMS = "fields name ;"
+        obj = self.__getGenreRequest(PARAMS)
+        
+
+        ret = {}
+        for genre in obj: 
+            ret[genre['id']]=genre['name']
+
+        return ret
 
     def getTopnGames(self,n=10,**kwargs) : 
         
@@ -169,7 +110,6 @@ class IGBRequest :
         if isinstance(game_id,int) : 
             kwargs['where']= "id = {}".format(game_id)
         elif isinstance(game_id,list) : 
-            
             kwargs['where'] = "id = ({})".format(','.join([str(x) for x in game_id]))
 
         PARAMS = self.__processQuery(kwargs)
@@ -181,25 +121,27 @@ class IGBRequest :
 
     def getGameByName(self,name,**kwargs) : 
         
+        kwargs['search'] = str(name)
         PARAMS = self.__processQuery(kwargs)
-        PARAMS['search'] = str(name)
-
+        
         return self.__getGamesRequest(PARAMS)
 
+    def getTopnPopularGames(self,n,**kwargs):
 
         
-    def dummy_request(self) : 
-        url = os.path.join(self.BASE_URL,"games")
+        PARAMS = self.__processQuery(kwargs)
+        PARAMS+="sort popularity desc ;"
 
-        DATA='where id = 1 ;'
-        resp = requests.post(url,headers=self.BASE_PARAM,data=DATA)
-        return resp.json()        
+        return self.__getGamesRequest(PARAMS)
+     
 
 if __name__=='__main__' : 
     
     handler = IGBRequest() 
 
     #resp = handler.getTopnGames(n=2,fields=['name'])
-    resp = handler.getGameById(game_id=[1,2,3],fields=['name'])
-    #resp = handler.dummy_request()
-    print(resp)  
+    #resp = handler.getGameById(game_id=2,fields=['name'])
+    #resp = handler.getGameByName(name="tom clancy",fields=["name","rating"])
+    resp = handler.getTopnPopularGames(n=10,fields=["name"])
+    print(resp)
+    
