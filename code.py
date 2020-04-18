@@ -18,6 +18,7 @@ class IGBRequest :
         self.GAME_STATUS_MAP=field_info.GAME_STATUS_MAP
         self.GENRES_FIELDS_ALL=field_info.GAME_FIELDS_ALL
         self.DEFAULT_GAME_FIELDS=field_info.DEFAULT_GAME_FIELDS
+        
         self.GENRE_MAP =  self.__setGenresMap()
 
         self.all_genres_count = 0 
@@ -34,6 +35,7 @@ class IGBRequest :
             for x in sub_link : 
                 url = os.path.join(url,x)
         print(params_args)
+        
         resp = requests.post(url,headers=self.BASE_PARAM,data=params_args)
         return resp.json()
 
@@ -131,11 +133,12 @@ class IGBRequest :
 
     def getTopnPopularGames(self,n,**kwargs):
 
-        
         PARAMS = self.__processQuery(kwargs)
         PARAMS+="sort popularity desc ;"
 
         return self.__getGamesRequest(PARAMS)
+
+
      
 
 if __name__=='__main__' : 
@@ -145,6 +148,6 @@ if __name__=='__main__' :
     #resp = handler.getTopnGames(n=2,fields=['name'])
     #resp = handler.getGameById(game_id=2,fields=['name'])
     #resp = handler.getGameByName(name="tom clancy",fields=["name","rating"])
-    resp = handler.getTopnPopularGames(n=10,fields=["*"],exclude=["summary"],limit=2)
-    print(resp)
+
+    #print(resp)
     
