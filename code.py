@@ -119,7 +119,7 @@ class IGBRequest :
             for x in sub_link : 
                 url = os.path.join(url,x)
         
-        resp = requests.get(url,headers=self.BASE_PARAM,params=params_args)
+        resp = requests.post(url,headers=self.BASE_PARAM,data=params_args)
         return resp.json()
 
     def __getSearchRequest(self,param_args,sub_link=None) : 
@@ -132,55 +132,74 @@ class IGBRequest :
         resp = requests.get(url,headers=self.BASE_PARAM,params=param_args)
         return resp.json()
 
-    def __getCounts(self) : 
 
-        PARAMS = self.__updateFields()
-        return self.__getGamesRequest(PARAMS,["count"])
-
-
-    def __updateFields(self,kwargs) : 
+    def __processQuery(self,kwargs) : 
         
-        PARAMS={}
+        PARAMS=""
         
+        ## fields query 
         if 'fields' in kwargs : 
-            FIELDS=",".join(kwargs['fields'])
-            PARAMS = {'fields':FIELDS}
+            FIELDS=",".join(kwargs['fields'])  
         else:
-            PARAMS['fields']=','.join(self.DEFAULT_GAME_FIELDS)
+            FIELDS=','.join(self.DEFAULT_GAME_FIELDS)
+        PARAMS+="fields {} ;".format(FIELDS)
+
+        # where query 
+        if 'where' in kwargs: 
+            PARAMS+="where {} ; ".format(kwargs['where'])
+
+        if 'limit' in kwargs : 
+            PARAMS+="limit {} ;".format(kwargs['limit'])
 
         return PARAMS
 
+
+
     def getTopnGames(self,n=10,**kwargs) : 
         
-        PARAMS = self.__updateFields(kwargs)
-        PARAMS['limit'] = n 
-
+        kwargs['limit']=n
+        
+        PARAMS = self.__processQuery(kwargs)
+        
         return self.__getGamesRequest(PARAMS)
 
 
-    def getGameById(self,id=1,**kwargs) : 
+    def getGameById(self,game_id,**kwargs) : 
         
-        PARAMS = self.__updateFields(kwargs)
-        PARAMS['where id'] = id 
+        if isinstance(game_id,int) : 
+            kwargs['where']= "id = {}".format(game_id)
+        elif isinstance(game_id,list) : 
+            
+            kwargs['where'] = "id = ({})".format(','.join([str(x) for x in game_id]))
 
+        PARAMS = self.__processQuery(kwargs)
+
+        print(PARAMS)
+        
         return self.__getGamesRequest(PARAMS)
 
 
     def getGameByName(self,name,**kwargs) : 
         
-        PARAMS = self.__updateFields(kwargs)
+        PARAMS = self.__processQuery(kwargs)
         PARAMS['search'] = str(name)
 
         return self.__getGamesRequest(PARAMS)
 
 
         
+    def dummy_request(self) : 
+        url = os.path.join(self.BASE_URL,"games")
+
+        DATA='where id = 1 ;'
+        resp = requests.post(url,headers=self.BASE_PARAM,data=DATA)
+        return resp.json()        
 
 if __name__=='__main__' : 
     
     handler = IGBRequest() 
 
-    #resp = handler.getTopnGames(n=500)
-    resp = handler.getGameById(id=4,fields=['name'])
-    
+    #resp = handler.getTopnGames(n=2,fields=['name'])
+    resp = handler.getGameById(game_id=[1,2,3],fields=['name'])
+    #resp = handler.dummy_request()
     print(resp)  
