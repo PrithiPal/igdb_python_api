@@ -33,7 +33,7 @@ class IGBRequest :
         if sub_link is not None : 
             for x in sub_link : 
                 url = os.path.join(url,x)
-        
+        print(params_args)
         resp = requests.post(url,headers=self.BASE_PARAM,data=params_args)
         return resp.json()
 
@@ -81,7 +81,10 @@ class IGBRequest :
         if 'search' in kwargs :
             PARAMS+="search \"{}\" ;".format(kwargs['search'])
 
-        
+        if 'exclude' in kwargs : 
+            EXCLUDE=",".join(kwargs['exclude'])  
+            PARAMS+="exclude {} ;".format(EXCLUDE)
+
         return PARAMS
 
     def __setGenresMap(self) : 
@@ -142,6 +145,6 @@ if __name__=='__main__' :
     #resp = handler.getTopnGames(n=2,fields=['name'])
     #resp = handler.getGameById(game_id=2,fields=['name'])
     #resp = handler.getGameByName(name="tom clancy",fields=["name","rating"])
-    resp = handler.getTopnPopularGames(n=10,fields=["name"])
+    resp = handler.getTopnPopularGames(n=10,fields=["*"],exclude=["summary"],limit=2)
     print(resp)
     
