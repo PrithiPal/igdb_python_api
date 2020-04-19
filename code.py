@@ -135,6 +135,7 @@ class IGBRequest :
 
         PARAMS = self.__processQuery(kwargs)
         PARAMS+="sort popularity desc ;"
+        PARAMS+="limit {} ;".format(n)
 
         return self.__getGamesRequest(PARAMS)
 
@@ -149,5 +150,10 @@ if __name__=='__main__' :
     #resp = handler.getGameById(game_id=2,fields=['name'])
     #resp = handler.getGameByName(name="tom clancy",fields=["name","rating"])
 
-    #print(resp)
+    genre_map=handler.GENRE_MAP
+    
+    resp=handler.getTopnPopularGames(n=2,fields=['name'],where="platforms = (13,24)")
+
+    #resp = handler.getTopnPopularGames(n=5,fields=['name','cover','platforms','genres'])
+    print(resp)
     
