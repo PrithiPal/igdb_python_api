@@ -2,11 +2,14 @@ import requests
 import os 
 import sys 
 import field_info
-
+import shutil
 
 class IGBRequest : 
 
-    def __init__(self) : 
+    def __init__(self,media_path) : 
+        assert media_path!=None 
+        assert media_path!=""
+        
         self.BASE_URL="https://api-v3.igdb.com/"
         self.SECRET_TOKEN=os.getenv("IGDB_TOKEN")
         self.BASE_PARAM = {'user-key':self.SECRET_TOKEN,
@@ -20,6 +23,8 @@ class IGBRequest :
         self.DEFAULT_GAME_FIELDS=field_info.DEFAULT_GAME_FIELDS
         
         self.GENRE_MAP =  self.__setGenresMap()
+        self.MEDIA_PATH = media_path
+        self.IMAGE_BASE_URL="https://images.igdb.com/igdb/image/upload/t_thumb/"
 
         self.all_genres_count = 0 
         self.all_games_count = 0 
@@ -100,6 +105,15 @@ class IGBRequest :
             ret[genre['id']]=genre['name']
 
         return ret
+        
+    def __downloadGameCover(self,dir_name,image_id,local_name) : 
+        assert os.path.isdir(dir_name)
+        full_link = os.path.join(self.IMAGE_BASE_URL,image_id)
+        resp = requests.get(full_link,stream=True)
+        local_file = open(local_name,'wb')
+        resp.raw.decode_content=True 
+        shutil.copyfileobj(resp.raw,local_file)
+        del resp
 
     def getTopnGames(self,n=10,**kwargs) : 
         
@@ -139,12 +153,24 @@ class IGBRequest :
 
         return self.__getGamesRequest(PARAMS)
 
+    def setMediaPath(self,path) : 
+        self.MEDIA_PATH=path 
+
+    def __downloadGameCover(self,dir_name,image_id,local_name) : 
+        assert os.path.isdir(dir_name)
+        full_link = os.path.join(self.IMAGE_BASE_URL,image_id)
+        resp = requests.get(full_link,stream=True)
+        local_file = open(local_name,'wb')
+        resp.raw.decode_content=True 
+        shutil.copyfileobj(resp.raw,local_file)
+        del resp  
+
 
      
 
 if __name__=='__main__' : 
     
-    handler = IGBRequest() 
+    handler = IGBRequest(media_path="") 
 
     #resp = handler.getTopnGames(n=2,fields=['name'])
     #resp = handler.getGameById(game_id=2,fields=['name'])
@@ -152,8 +178,10 @@ if __name__=='__main__' :
 
     genre_map=handler.GENRE_MAP
     
-    resp=handler.getTopnPopularGames(n=2,fields=['name'],where="platforms = (13,24)")
+    #resp=handler.getTopnPopularGames(n=2,fields=['name'],where="platforms = (13,24)")
 
     #resp = handler.getTopnPopularGames(n=5,fields=['name','cover','platforms','genres'])
-    print(resp)
+    #print(resp)
+
+    handler.downloadGameCover(dir_name='.',image_id='bbboosegdval1pmsvm9n.jpg',local_name="sample.jpg")
     
