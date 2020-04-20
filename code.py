@@ -9,7 +9,7 @@ class IGBRequest :
     def __init__(self,media_path) : 
         assert media_path!=None 
         assert media_path!=""
-        
+
         self.BASE_URL="https://api-v3.igdb.com/"
         self.SECRET_TOKEN=os.getenv("IGDB_TOKEN")
         self.BASE_PARAM = {'user-key':self.SECRET_TOKEN,
@@ -42,6 +42,8 @@ class IGBRequest :
         print(params_args)
         
         resp = requests.post(url,headers=self.BASE_PARAM,data=params_args)
+
+
         return resp.json()
 
     def __getSearchRequest(self,param_args,sub_link=None) : 
@@ -52,7 +54,10 @@ class IGBRequest :
                 url = os.path.join(url,x)
         
         print(param_args)
+        
         resp = requests.get(url,headers=self.BASE_PARAM,params=param_args)
+        
+        
         return resp.json()
 
     def __getGenreRequest(self,params_args,sub_link=None) :
@@ -67,15 +72,21 @@ class IGBRequest :
         return resp.json()
 
 
-    def __processQuery(self,kwargs) : 
+    def __processPreQuery(self,kwargs) : 
         
         PARAMS=""
         
         ## fields query 
+
         if 'fields' in kwargs : 
             FIELDS=",".join(kwargs['fields'])  
         else:
             FIELDS=','.join(self.DEFAULT_GAME_FIELDS)
+        
+        if 'cover' in kwargs: 
+            if kwargs['cover']:
+                FIELDS+=", cover.* "
+
         PARAMS+="fields {} ;".format(FIELDS)
 
         # where query 
@@ -91,15 +102,33 @@ class IGBRequest :
         if 'exclude' in kwargs : 
             EXCLUDE=",".join(kwargs['exclude'])  
             PARAMS+="exclude {} ;".format(EXCLUDE)
+        
 
         return PARAMS
+
+
+    def __processPostQuery(self,orig_resp,kwargs): 
+        print("processPostQuery")
+
+        DOWNLOAD_IMAGE=False
+        if 'cover' in kwargs : 
+            if kwargs['cover']: 
+                DOWNLOAD_IMAGE=True
+
+        for obj in orig_resp : 
+            if DOWNLOAD_IMAGE:  
+                if obj['cover'] : 
+                    image_id=obj['cover']['image_id'] + ".jpg"
+                    self.__downloadGameCover(dir_name=self.MEDIA_PATH,image_id=image_id,local_name=image_id)
+    
+
+        pass 
 
     def __setGenresMap(self) : 
 
         PARAMS = "fields name ;"
         obj = self.__getGenreRequest(PARAMS)
         
-
         ret = {}
         for genre in obj: 
             ret[genre['id']]=genre['name']
@@ -118,10 +147,11 @@ class IGBRequest :
     def getTopnGames(self,n=10,**kwargs) : 
         
         kwargs['limit']=n
+        PARAMS = self.__processPreQuery(kwargs)
         
-        PARAMS = self.__processQuery(kwargs)
-        
-        return self.__getGamesRequest(PARAMS)
+        original_response = self.__getGamesRequest(PARAMS)
+        self.__processPostQuery(original_response,kwargs)
+        return original_response
 
 
     def getGameById(self,game_id,**kwargs) : 
@@ -131,57 +161,59 @@ class IGBRequest :
         elif isinstance(game_id,list) : 
             kwargs['where'] = "id = ({})".format(','.join([str(x) for x in game_id]))
 
-        PARAMS = self.__processQuery(kwargs)
+        PARAMS = self.__processPreQuery(kwargs)
 
         print(PARAMS)
         
-        return self.__getGamesRequest(PARAMS)
+        original_response = self.__getGamesRequest(PARAMS)
+        self.__processPostQuery(original_response,kwargs)
+        return original_response
 
 
     def getGameByName(self,name,**kwargs) : 
         
         kwargs['search'] = str(name)
-        PARAMS = self.__processQuery(kwargs)
+
+        PARAMS = self.__processPreQuery(kwargs)
         
-        return self.__getGamesRequest(PARAMS)
+        original_response = self.__getGamesRequest(PARAMS)
+        self.__processPostQuery(original_response,kwargs)
+        return original_response
 
     def getTopnPopularGames(self,n,**kwargs):
 
-        PARAMS = self.__processQuery(kwargs)
+        PARAMS = self.__processPreQuery(kwargs)
         PARAMS+="sort popularity desc ;"
         PARAMS+="limit {} ;".format(n)
 
-        return self.__getGamesRequest(PARAMS)
+        original_response = self.__getGamesRequest(PARAMS)
+        self.__processPostQuery(original_response,kwargs)
+        return original_response
 
     def setMediaPath(self,path) : 
         self.MEDIA_PATH=path 
+        pass 
 
-    def __downloadGameCover(self,dir_name,image_id,local_name) : 
-        assert os.path.isdir(dir_name)
-        full_link = os.path.join(self.IMAGE_BASE_URL,image_id)
-        resp = requests.get(full_link,stream=True)
-        local_file = open(local_name,'wb')
-        resp.raw.decode_content=True 
-        shutil.copyfileobj(resp.raw,local_file)
-        del resp  
 
 
      
 
 if __name__=='__main__' : 
     
-    handler = IGBRequest(media_path="") 
+    handler = IGBRequest(media_path=".") 
 
     #resp = handler.getTopnGames(n=2,fields=['name'])
     #resp = handler.getGameById(game_id=2,fields=['name'])
     #resp = handler.getGameByName(name="tom clancy",fields=["name","rating"])
 
     genre_map=handler.GENRE_MAP
-    
-    #resp=handler.getTopnPopularGames(n=2,fields=['name'],where="platforms = (13,24)")
+    resp=handler.getTopnPopularGames(n=2,fields=['name'],where="platforms = (13,24)",cover=True)
+
+
+    ##print(resp)
 
     #resp = handler.getTopnPopularGames(n=5,fields=['name','cover','platforms','genres'])
     #print(resp)
 
-    handler.downloadGameCover(dir_name='.',image_id='bbboosegdval1pmsvm9n.jpg',local_name="sample.jpg")
+    #handler.downloadGameCover(dir_name='.',image_id='bbboosegdval1pmsvm9n.jpg',local_name="sample.jpg")
     
