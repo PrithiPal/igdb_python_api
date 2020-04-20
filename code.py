@@ -117,7 +117,7 @@ class IGBRequest :
 
         for obj in orig_resp : 
             if DOWNLOAD_IMAGE:  
-                if obj['cover'] : 
+                if 'cover' in obj : 
                     image_id=obj['cover']['image_id'] + ".jpg"
                     self.__downloadGameCover(dir_name=self.MEDIA_PATH,image_id=image_id,local_name=image_id)
     
@@ -139,7 +139,7 @@ class IGBRequest :
         assert os.path.isdir(dir_name)
         full_link = os.path.join(self.IMAGE_BASE_URL,image_id)
         resp = requests.get(full_link,stream=True)
-        local_file = open(local_name,'wb')
+        local_file = open(os.path.join(dir_name,local_name),'wb')
         resp.raw.decode_content=True 
         shutil.copyfileobj(resp.raw,local_file)
         del resp
